@@ -51,6 +51,7 @@ SEEN_IDS_FILE = "seen_sms_ids.json"
 MAX_SEEN_IDS = 5000
 
 NUMBER_CLIENT_MAP = {}
+PANEL_TOKEN_MAP = {v: k for k, v in TOKEN_PANEL_MAP.items()}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,42 +101,45 @@ def escape_markdown(text) -> str:
 
 
 # ---------------------------------------------------------------------------
-# API Data Fetching & Syncing
+# Complete Number-User Syncing Logic
 # ---------------------------------------------------------------------------
 async def sync_single_token_numbers(session: aiohttp.ClientSession, token: str):
-    """এক একক টোকেনের সমস্ত মোবাইল নম্বর ও ইউজারনেম ফ্যাচ করা"""
+    """একটি প্যানেলের সমস্ত পেজ ঘুরে সম্পূর্ণ নম্বর এবং ক্লায়েন্ট লিস্ট ডাউনলোড করা"""
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     url = "https://panel.lamix.org/api/v1/numbers?limit=500"
+    
     while url:
         try:
-            async with session.get(url, headers=headers, timeout=8) as res:
+            async with session.get(url, headers=headers, timeout=12) as res:
                 if res.status == 200:
                     data = await res.json() or {}
                     records = data.get("records") or []
                     for item in records:
                         if isinstance(item, dict):
                             num = item.get("number")
-                            client = item.get("client") or item.get("username") or "Unassigned"
+                            client = item.get("client") or item.get("username") or item.get("user") or "Unassigned"
                             if num:
                                 NUMBER_CLIENT_MAP[str(num)] = str(client)
 
                     next_cursor = data.get("nextCursor")
                     url = f"https://panel.lamix.org/api/v1/numbers?limit=500&after={next_cursor}" if next_cursor else None
+                elif res.status == 429:
+                    await asyncio.sleep(2)
                 else:
                     url = None
         except Exception:
             url = None
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(0.1)
 
 
 async def sync_all_numbers(session: aiohttp.ClientSession):
-    """সবগুলো টোকেন থেকে একসাথে ইউজারনেম লিস্ট আপডেট করা"""
+    """১৭টি প্যানেলের সমস্ত নম্বর একসাথে সিঙ্ক করা"""
     tasks = [sync_single_token_numbers(session, token) for token in LAMIX_TOKENS]
     await asyncio.gather(*tasks)
 
 
 async def sync_number_clients_periodically(session: aiohttp.ClientSession):
-    """প্রতি ৩০ সেকেন্ড পর পর ইউজারনেম ম্যাপ ব্যাকগ্রাউন্ডে আপডেট হতে থাকবে"""
+    """প্রতি ৩০ সেকেন্ডে ব্যাকগ্রাউন্ডে ইউজারনেম লিস্ট সম্পূর্ণ সিঙ্ক হবে"""
     while True:
         try:
             await sync_all_numbers(session)
@@ -144,6 +148,32 @@ async def sync_number_clients_periodically(session: aiohttp.ClientSession):
         await asyncio.sleep(30)
 
 
+async def fetch_single_number_user(session: aiohttp.ClientSession, panel_name: str, number: str) -> str:
+    """জরুরি ক্ষেত্রে একক মোবাইল নম্বরের ইউজারনেম রি-ফ্যাচ করা"""
+    token = PANEL_TOKEN_MAP.get(panel_name)
+    if not token:
+        return "Unassigned"
+    
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    url = f"https://panel.lamix.org/api/v1/numbers?number={number}"
+    
+    try:
+        async with session.get(url, headers=headers, timeout=5) as res:
+            if res.status == 200:
+                data = await res.json() or {}
+                records = data.get("records") or []
+                if records and isinstance(records[0], dict):
+                    client = records[0].get("client") or records[0].get("username") or "Unassigned"
+                    NUMBER_CLIENT_MAP[str(number)] = str(client)
+                    return str(client)
+    except Exception:
+        pass
+    return "Unassigned"
+
+
+# ---------------------------------------------------------------------------
+# Message Fetching & Multi-Bot OTP Processing
+# ---------------------------------------------------------------------------
 async def fetch_single_token_messages(session: aiohttp.ClientSession, token: str) -> list:
     panel_name = TOKEN_PANEL_MAP.get(token, "Sadmanaldo258")
     headers = {
@@ -178,9 +208,6 @@ async def fetch_all_messages(session: aiohttp.ClientSession) -> list:
     return all_records
 
 
-# ---------------------------------------------------------------------------
-# SMS Processing & Multi-Bot Failover Routing
-# ---------------------------------------------------------------------------
 async def process_sms(session: aiohttp.ClientSession):
     global bot_index
     sms_list = await fetch_all_messages(session)
@@ -196,7 +223,11 @@ async def process_sms(session: aiohttp.ClientSession):
         range_name = str(sms.get("range") or "N/A")
         panel_name = str(sms.get("_panel_name") or "Sadmanaldo258")
 
-        username = NUMBER_CLIENT_MAP.get(number, "Unassigned")
+        # মেমরিতে ইউজারনেম না থাকলে রিয়েল-টাইমে লাইভ রি-ফ্যাচ করা
+        username = NUMBER_CLIENT_MAP.get(number)
+        if not username or username == "Unassigned":
+            username = await fetch_single_number_user(session, panel_name, number)
+
         sms_key = f"{panel_name}_{number}_{message_text}_{date_str}"
 
         if sms_key in seen_sms_ids:
@@ -207,7 +238,6 @@ async def process_sms(session: aiohttp.ClientSession):
         else:
             target_chat_id = MAIN_CHAT_ID
 
-        # আপনার দেওয়া কাঙ্ক্ষিত ফরম্যাট
         telegram_msg = (
             f"⚡ *LIVE OTP RECEIVED* ⚡\n"
             f"👤 *Panel:* {escape_markdown(panel_name)}\n"
@@ -254,18 +284,18 @@ async def process_sms(session: aiohttp.ClientSession):
 # Main Execution Flow
 # ---------------------------------------------------------------------------
 async def main():
-    logger.info(f"SMS Feed Bot ({len(bots)} Bots Active) চালু হচ্ছে...")
+    logger.info(f"SMS Feed Bot ({len(bots)} Active Bots) চালু হচ্ছে...")
 
     async with aiohttp.ClientSession() as session:
-        # বোট সেন্ড শুরু করার আগেই ইউজারনেম ম্যাপ ইনিশিয়াল সিঙ্ক করা হচ্ছে
-        logger.info("নম্বর ও ইউজারনেম সিঙ্ক করা হচ্ছে...")
+        # ১. আগে সব ইউজারনেম ও নম্বরের তথ্য ডাউনলোড না হওয়া পর্যন্ত বোট ওটিপি পাঠাবে না
+        logger.info("প্যানেল থেকে সমস্ত নম্বর ও ইউজারনেম ডাউনলোড করে মেমরিতে সেভ করা হচ্ছে...")
         await sync_all_numbers(session)
-        logger.info(f"মোট {len(NUMBER_CLIENT_MAP)} টি নম্বরের ইউজারনেম মেমরিতে সিঙ্ক হয়েছে।")
+        logger.info(f"সফলভাবে {len(NUMBER_CLIENT_MAP)} টি নম্বরের ইউজারনেম মেমরিতে সিঙ্ক হয়েছে!")
 
-        # ব্যাকগ্রাউন্ডে অটো-সিঙ্ক চালু করা
+        # ২. ব্যাকগ্রাউন্ডে পিরিওডিক সিঙ্ক চালু করা
         asyncio.create_task(sync_number_clients_periodically(session))
 
-        # পুরানো মেসেজ স্ক্যান করা
+        # ৩. পুরানো ওটিপি স্ক্যান করে ইগনোর করা
         logger.info("প্রথমবার পুরানো SMS ডাটা স্ক্যান করে মেমরিতে নেওয়া হচ্ছে...")
         sms_list = await fetch_all_messages(session)
         for sms in sms_list:
@@ -277,7 +307,7 @@ async def main():
                 seen_sms_ids.add(f"{panel_name}_{number}_{message_text}_{date_str}")
 
         save_seen_ids(seen_sms_ids)
-        logger.info("লাইভ ট্র্যাকিং সফলভাবে চালু হয়েছে!")
+        logger.info("লাইভ ট্র্যাকিং সম্পূর্ণ রেডি এবং চালু হয়েছে!")
 
         while True:
             try:
