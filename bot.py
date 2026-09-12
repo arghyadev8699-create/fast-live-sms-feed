@@ -20,7 +20,6 @@ TELEGRAM_BOT_TOKENS = [
 ACTIVE_BOT_TOKENS = [t.strip() for t in TELEGRAM_BOT_TOKENS if t and t.strip()]
 MAIN_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# নতুন ও পুরানো সব মিলিয়ে মোট ২০টি প্যানেল আপডেট করা হয়েছে
 TOKEN_PANEL_MAP = {
     # Original Active Tokens
     "C57kIlfs-FfhslhXZnaJiM8TD8bNIQ65VtXt0ah3-Nk": "Sadmanaldo",
@@ -38,13 +37,16 @@ TOKEN_PANEL_MAP = {
     "H68v0LJ4ml5GCpiL6_HvQAeaB7HHqnfrIzCQfvAiGEA": "Ali nain",
     "ap1LzYsovP1mf1VN7Bb1y6i3X7u5kr1MMzZBsWtXm60": "K",
     
-    # NEW Added Tokens
+    # NEW & Updated Tokens
     "1a97dd85e7abfb93f5c54ca83185d08382cf0a86767f671227982a03e99fb01b": "Usman Baloch",
     "jM3NmxAshzg-YXUdSqaKqSNy-j57V12E2-qoToVgp6E": "Amir Jutt",
     "N2qbHY_60DJfNDoDoBNfblO2GpwxfMnoIG3zuCZJc9Q": "Khatoon",
-    "ZJOhLnAGM175HA_Vj7aFp1RvKEFO5x6z_GvjfwLvRII": "Realistic",
+    "5IAx28HfLNxpCBwXCGXuVCa7pwOm58ec5oZrtqtTxSA": "Realistic",
     "2vnz7Ge6LVxQWdSZ2oxL8A8ROXzCIS0eZkGp93h0u-o": "Dr Abaido",
     "QC-DX5NF1lCyLhEc7ma6YOcln9VkS277bx05Lrm7irU": "Hashim",
+    "cNIwFhps5oCDSRM-hCzHxUGcuwpY35UzdtqwKypRzJs": "Innocent",
+    "OJ3ZlYxop5y_xSwk5PAi6FiWwqDgMl7uQ2ZQsmUHBZs": "Syed Ahsan",
+    "8NOCNS1aa2zShmLKvhtNdKd6htlF0khKuiOWR1DwDNo": "Yasir Abbas",
 }
 
 env_tokens = [t.strip() for t in os.environ.get("LAMIX_TOKEN", "").split(",") if t.strip()]
