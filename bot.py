@@ -53,7 +53,14 @@ TOKEN_PANEL_MAP = {
     "Myf5KMY1sFOGOPEMOvDvaKcxR8bwSfTPX24bNy-9tnw": "Meerub",
     "N3AyqxCYjZUs4wTf1qzgeu-Ga0g0L2BQRdePTPVR4UE": "Yasir",
     "nN8VTSTNbZLjBWykO7pTwxtvKd_CsrC7xtGbWqFWdKg": "Ahsan",
-    "rcSwdaLiaGCAs-FtOPAg9JaqlYXpbq2wShFUi0gD-S8": "Hafiz Irfan"
+    "rcSwdaLiaGCAs-FtOPAg9JaqlYXpbq2wShFUi0gD-S8": "Hafiz Irfan",
+
+    # BRAND NEW Added Tokens
+    "FBsFl-FOVMgAGxaeUWyWwqobqJtyr7BDnHir4u7vxyw": "Naikit",
+    "I43t5uUGF5C2d5nI3ztLm6aHRWxQ8RsZ50ej9MSY6oE": "Hunain",
+    "L95iuU0hl1NLF2J7U7spLp2hKjxEdtQaNm-3HQVnnf8": "CH Noman",
+    "SZ30WyMB1A7srxH_MWSbKqKe8qK8OnrUWTgsL_8KWx0": "Ahmad",
+    "hbw5gbSP4qmel4I8HCBuscfZXjyS6194VonXfAtHqfU": "Naeem"
 }
 
 env_tokens = [t.strip() for t in os.environ.get("LAMIX_TOKEN", "").split(",") if t.strip()]
