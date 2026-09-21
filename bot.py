@@ -21,6 +21,7 @@ ACTIVE_BOT_TOKENS = [t.strip() for t in TELEGRAM_BOT_TOKENS if t and t.strip()]
 MAIN_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 TOKEN_PANEL_MAP = {
+TOKEN_PANEL_MAP = {
     # Original Active Tokens
     "C57kIlfs-FfhslhXZnaJiM8TD8bNIQ65VtXt0ah3-Nk": "Sadmanaldo",
     "5JhoHt02fHyADGx1-1eup1d80_M7OB1z3U9eUwqy3_Q": "Agent Panel",
@@ -46,7 +47,7 @@ TOKEN_PANEL_MAP = {
     "QC-DX5NF1lCyLhEc7ma6YOcln9VkS277bx05Lrm7irU": "Hashim",
     "Q26YYl5yg19UVYhCZlRvgHtshHpTknVfaGhyaFZScHw=": "Rashid",
 
-    # LATEST Added Tokens
+    # Added Batch 2
     "TbGNpFFSdrqw-VzkSlBHKT2gehWc4APAaL_rfBxbcq0": "Nadeem Akram",
     "GCSEsBEcbXGLMX56VYt1_5CkgWYHGgmRKLE5qUHSJxY": "Hasnain Manzoor",
     "_9cRoaDwYgtsX1kSolTbl15BA-Iwf_ofUDR3u0XIIcU": "Realistic (New)",
@@ -55,13 +56,12 @@ TOKEN_PANEL_MAP = {
     "nN8VTSTNbZLjBWykO7pTwxtvKd_CsrC7xtGbWqFWdKg": "Ahsan",
     "rcSwdaLiaGCAs-FtOPAg9JaqlYXpbq2wShFUi0gD-S8": "Hafiz Irfan",
 
-    # BRAND NEW Added Tokens
-    "FBsFl-FOVMgAGxaeUWyWwqobqJtyr7BDnHir4u7vxyw": "Naikit",
-    "I43t5uUGF5C2d5nI3ztLm6aHRWxQ8RsZ50ej9MSY6oE": "Hunain",
-    "L95iuU0hl1NLF2J7U7spLp2hKjxEdtQaNm-3HQVnnf8": "CH Noman",
-    "SZ30WyMB1A7srxH_MWSbKqKe8qK8OnrUWTgsL_8KWx0": "Ahmad",
+    # Added Batch 3
+    "GBskkhmgmJZTz9zLYl-yYAlba4e6f-PMV6hAEST_FJg": "Saqlain",
+    "LwBXlxfuAz3ZXpCO0CkUrSQEwEF7Vv44VUB1YYM3Kyw": "Ishfaq",
     "hbw5gbSP4qmel4I8HCBuscfZXjyS6194VonXfAtHqfU": "Naeem"
 }
+
 
 env_tokens = [t.strip() for t in os.environ.get("LAMIX_TOKEN", "").split(",") if t.strip()]
 LAMIX_TOKENS = list(set(env_tokens + list(TOKEN_PANEL_MAP.keys())))
