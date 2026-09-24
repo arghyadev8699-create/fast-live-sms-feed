@@ -8,7 +8,7 @@ from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
 # ---------------------------------------------------------------------------
-# Configuration & Environment Variables
+# Dynamic Environment Variables & Mapping Configuration
 # ---------------------------------------------------------------------------
 TELEGRAM_BOT_TOKENS = [
     os.environ.get("TELEGRAM_BOT_TOKEN"),
@@ -20,53 +20,25 @@ TELEGRAM_BOT_TOKENS = [
 ACTIVE_BOT_TOKENS = [t.strip() for t in TELEGRAM_BOT_TOKENS if t and t.strip()]
 MAIN_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-TOKEN_PANEL_MAP = {
-    # Original Active Tokens
-    "C57kIlfs-FfhslhXZnaJiM8TD8bNIQ65VtXt0ah3-Nk": "Sadmanaldo",
-    "5JhoHt02fHyADGx1-1eup1d80_M7OB1z3U9eUwqy3_Q": "Agent Panel",
-    "yroBh9QlITbxBy10wysnXuT5cdm_K8ZnkpRrKRdLUlY": "Hamad Jam",
-    "HV5GIhjqOz6MsBLYqYFlmv96iHkUG03vq3oydbFYyyc": "Adeel",
-    "MhI0RN5zvkwWq47Bu-_N2eWM4qDuKB5PTGWgAeW74kM": "Inzamam",
-    "bGBstGBsW-bjfD0ePkpZ_EpHess5onCOKjmTZICZ7Xo": "Malik Tubba",
-    "wTsDRc7L_2JTb9a7deSYLrlOBHjm48z-wC5KepM1geU": "Ali Haider",
-    "bjTk9YI17AulWdu8QVck5di1n1atRtXHDx6U_KNLfhY": "Iqra",
-    "TkwW6fGU_guZRP9WGeVe_5s2iY9_l_MsvJmMrTDJnVw": "Shehraz",
-    "_tEkas9jSEKRJ0fz3FbSl5Oh9w3J2k__ausvwouO51M": "Ikram",
-    "vnrEuewqrI971B_8Es9g4s0nCTQk1irvAdQp9mGylqQ": "Raheel Bhutta",
-    "W8ULKQBssbNofoSXlh0RMsPCYmdEMe1lMQcNuWXd68g": "Khalid",
-    "H68v0LJ4ml5GCpiL6_HvQAeaB7HHqnfrIzCQfvAiGEA": "Ali nain",
-    "ap1LzYsovP1mf1VN7Bb1y6i3X7u5kr1MMzZBsWtXm60": "K",
-    
-    # NEW Added Tokens (Batch 1)
-    "1a97dd85e7abfb93f5c54ca83185d08382cf0a86767f671227982a03e99fb01b": "Usman Baloch",
-    "jM3NmxAshzg-YXUdSqaKqSNy-j57V12E2-qoToVgp6E": "Amir Jutt",
-    "N2qbHY_60DJfNDoDoBNfblO2GpwxfMnoIG3zuCZJc9Q": "Khatoon",
-    "ZJOhLnAGM175HA_Vj7aFp1RvKEFO5x6z_GvjfwLvRII": "Realistic",
-    "2vnz7Ge6LVxQWdSZ2oxL8A8ROXzCIS0eZkGp93h0u-o": "Dr Abaido",
-    "QC-DX5NF1lCyLhEc7ma6YOcln9VkS277bx05Lrm7irU": "Hashim",
-    "Q26YYl5yg19UVYhCZlRvgHtshHpTknVfaGhyaFZScHw=": "Rashid",
-
-    # Added Tokens (Batch 2)
-    "TbGNpFFSdrqw-VzkSlBHKT2gehWc4APAaL_rfBxbcq0": "Nadeem Akram",
-    "GCSEsBEcbXGLMX56VYt1_5CkgWYHGgmRKLE5qUHSJxY": "Hasnain Manzoor",
-    "_9cRoaDwYgtsX1kSolTbl15BA-Iwf_ofUDR3u0XIIcU": "Realistic (New)",
-    "Myf5KMY1sFOGOPEMOvDvaKcxR8bwSfTPX24bNy-9tnw": "Meerub",
-    "N3AyqxCYjZUs4wTf1qzgeu-Ga0g0L2BQRdePTPVR4UE": "Yasir",
-    "nN8VTSTNbZLjBWykO7pTwxtvKd_CsrC7xtGbWqFWdKg": "Ahsan",
-    "rcSwdaLiaGCAs-FtOPAg9JaqlYXpbq2wShFUi0gD-S8": "Hafiz Irfan",
-
-    # Added Tokens (Batch 3)
-    "GBskkhmgmJZTz9zLYl-yYAlba4e6f-PMV6hAEST_FJg": "Saqlain",
-    "LwBXlxfuAz3ZXpCO0CkUrSQEwEF7Vv44VUB1YYM3Kyw": "Ishfaq",
-    "hbw5gbSP4qmel4I8HCBuscfZXjyS6194VonXfAtHqfU": "Naeem"
-}
-
-env_tokens = [t.strip() for t in os.environ.get("LAMIX_TOKEN", "").split(",") if t.strip()]
-LAMIX_TOKENS = list(set(env_tokens + list(TOKEN_PANEL_MAP.keys())))
-
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
 SEEN_IDS_FILE = "seen_sms_ids.json"
 MAX_SEEN_IDS = 5000
+
+# Parse dynamic TOKEN:Name mappings from Environment Variable
+TOKEN_PANEL_MAP = {}
+raw_tokens = os.environ.get("LAMIX_TOKEN", "").split(",")
+
+for item in raw_tokens:
+    item = item.strip()
+    if not item:
+        continue
+    if ":" in item:
+        token, name = item.split(":", 1)
+        TOKEN_PANEL_MAP[token.strip()] = name.strip()
+    else:
+        TOKEN_PANEL_MAP[item] = "Agent Panel"
+
+LAMIX_TOKENS = list(TOKEN_PANEL_MAP.keys())
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,7 +47,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 if not ACTIVE_BOT_TOKENS or not MAIN_CHAT_ID or not LAMIX_TOKENS:
-    logger.error("প্রয়োজনীয় Environment Variables সেট করা নেই!")
+    logger.error("প্রয়োজনীয় Environment Variables সঠিকভাবে সেট করা নেই!")
     raise SystemExit(1)
 
 bots = [Bot(token=token) for token in ACTIVE_BOT_TOKENS]
@@ -173,7 +145,6 @@ async def process_sms(session: aiohttp.ClientSession):
         if sms_key in seen_sms_ids:
             continue
 
-        # সুপার-ফাস্ট টেমপ্লেট
         telegram_msg = (
             f"⚡ *LIVE OTP RECEIVED* ⚡\n"
             f"👤 *Agent / Panel:* `{escape_markdown(panel_name)}`\n"
@@ -190,7 +161,6 @@ async def process_sms(session: aiohttp.ClientSession):
         sent_successfully = False
         attempts = 0
 
-        # মাল্টি-বোট ইনস্ট্যান্ট সুইচিং
         while not sent_successfully and attempts < len(bots):
             current_bot = bots[bot_index]
             used_bot_id = bot_index + 1
@@ -222,18 +192,19 @@ async def main():
     logger.info(f"Bullet-Speed SMS Bot ({len(bots)} Active Bots) চালু হচ্ছে...")
 
     async with aiohttp.ClientSession() as session:
-        logger.info("পুরানো SMS ডাটা স্ক্যান করে মেমরিতে নেওয়া হচ্ছে...")
+        # ১ম বার চালু হলে বিদ্যমান SMS স্ক্যান করে 'seen' হিসেবে মার্ক করা হচ্ছে (টেলিগ্রামে পাঠানো হবে না)
+        logger.info("পুরানো SMS ডাটা স্ক্যান করে ব্যাকগ্রাউন্ডে নিস্ক্রিয় করা হচ্ছে...")
         sms_list = await fetch_all_messages(session)
         for sms in sms_list:
             if isinstance(sms, dict):
                 number = str(sms.get("number") or "N/A")
-                message_text = str(sms.get("content") or "")
+                message_text = str(sms.get("content") or sms.get("message") or "")
                 date_str = str(sms.get("time") or "N/A")
                 panel_name = str(sms.get("_panel_name") or "Agent Panel")
                 seen_sms_ids.add(f"{panel_name}_{number}_{message_text}_{date_str}")
 
         save_seen_ids(seen_sms_ids)
-        logger.info("আল্ট্রা-ফাস্ট লাইভ ট্র্যাকিং সম্পূর্ণ চালু হয়েছে!")
+        logger.info("পুরানো OTP স্কিপ সম্পূর্ণ! এখন থেকে শুধুমাত্র নতুন (LIVE) OTP পাঠানো হবে।")
 
         while True:
             try:
