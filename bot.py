@@ -2,13 +2,14 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime, timezone
 import aiohttp
 from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
 # ---------------------------------------------------------------------------
-# Dynamic Environment Variables & Mapping Configuration
+# Configuration & Dynamic Environment Variables
 # ---------------------------------------------------------------------------
 TELEGRAM_BOT_TOKENS = [
     os.environ.get("TELEGRAM_BOT_TOKEN"),
@@ -24,7 +25,10 @@ POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "1"))
 SEEN_IDS_FILE = "seen_sms_ids.json"
 MAX_SEEN_IDS = 5000
 
-# Parse dynamic TOKEN:Name mappings from Environment Variable
+# Bot Start Time (যাতে এর পূর্বের কোনো মেসেজ প্রসেস না হয়)
+BOT_START_TIME = datetime.now(timezone.utc)
+
+# Parse dynamic TOKEN:Name mappings
 TOKEN_PANEL_MAP = {}
 raw_tokens = os.environ.get("LAMIX_TOKEN", "").split(",")
 
@@ -47,7 +51,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 if not ACTIVE_BOT_TOKENS or not MAIN_CHAT_ID or not LAMIX_TOKENS:
-    logger.error("প্রয়োজনীয় Environment Variables সঠিকভাবে সেট করা নেই!")
+    logger.error("প্রয়োজনীয় Environment Variables সেট করা নেই!")
     raise SystemExit(1)
 
 bots = [Bot(token=token) for token in ACTIVE_BOT_TOKENS]
@@ -85,6 +89,14 @@ def escape_markdown(text) -> str:
         return ""
     special_chars = r"_*[]()~`>#+-=|{}.!\\"
     return "".join(f"\\{ch}" if ch in special_chars else ch for ch in str(text))
+
+
+def get_sms_key(sms: dict) -> str:
+    number = str(sms.get("number") or "N/A")
+    message_text = str(sms.get("content") or sms.get("message") or "")
+    date_str = str(sms.get("time") or "N/A")
+    panel_name = str(sms.get("_panel_name") or "Agent Panel")
+    return f"{panel_name}_{number}_{message_text}_{date_str}"
 
 
 # ---------------------------------------------------------------------------
@@ -133,17 +145,21 @@ async def process_sms(session: aiohttp.ClientSession):
         if not isinstance(sms, dict):
             continue
 
+        sms_key = get_sms_key(sms)
+
+        if sms_key in seen_sms_ids:
+            continue
+
+        # পুরানো মেসেজ সেভ করে এড়িয়ে যাওয়া
+        seen_sms_ids.add(sms_key)
+        save_seen_ids(seen_sms_ids)
+
         number = str(sms.get("number") or "N/A")
         message_text = str(sms.get("content") or sms.get("message") or "")
         date_str = str(sms.get("time") or "N/A")
         cli_name = str(sms.get("cli") or "N/A")
         range_name = str(sms.get("range") or "N/A")
         panel_name = str(sms.get("_panel_name") or "Agent Panel")
-
-        sms_key = f"{panel_name}_{number}_{message_text}_{date_str}"
-
-        if sms_key in seen_sms_ids:
-            continue
 
         telegram_msg = (
             f"⚡ *LIVE OTP RECEIVED* ⚡\n"
@@ -173,8 +189,6 @@ async def process_sms(session: aiohttp.ClientSession):
                     text=telegram_msg,
                     parse_mode=ParseMode.MARKDOWN_V2,
                 )
-                seen_sms_ids.add(sms_key)
-                save_seen_ids(seen_sms_ids)
                 logger.info(f"Instant OTP Sent via Bot #{used_bot_id}: {number} (Agent: {panel_name})")
                 sent_successfully = True
 
@@ -192,20 +206,17 @@ async def main():
     logger.info(f"Bullet-Speed SMS Bot ({len(bots)} Active Bots) চালু হচ্ছে...")
 
     async with aiohttp.ClientSession() as session:
-        # ১ম বার চালু হলে বিদ্যমান SMS স্ক্যান করে 'seen' হিসেবে মার্ক করা হচ্ছে (টেলিগ্রামে পাঠানো হবে না)
-        logger.info("পুরানো SMS ডাটা স্ক্যান করে ব্যাকগ্রাউন্ডে নিস্ক্রিয় করা হচ্ছে...")
-        sms_list = await fetch_all_messages(session)
-        for sms in sms_list:
+        # ১ম স্টেপ: চালু হওয়ার সাথে সাথে API-এর বর্তমান সব SMS কে মেমরিতে ব্লক করা
+        logger.info("বট চালুর মুহূর্ত পর্যন্ত বিদ্যমান সব SMS ডাটা সম্পূর্ণ ব্লক করা হচ্ছে...")
+        initial_sms_list = await fetch_all_messages(session)
+        for sms in initial_sms_list:
             if isinstance(sms, dict):
-                number = str(sms.get("number") or "N/A")
-                message_text = str(sms.get("content") or sms.get("message") or "")
-                date_str = str(sms.get("time") or "N/A")
-                panel_name = str(sms.get("_panel_name") or "Agent Panel")
-                seen_sms_ids.add(f"{panel_name}_{number}_{message_text}_{date_str}")
+                seen_sms_ids.add(get_sms_key(sms))
 
         save_seen_ids(seen_sms_ids)
-        logger.info("পুরানো OTP স্কিপ সম্পূর্ণ! এখন থেকে শুধুমাত্র নতুন (LIVE) OTP পাঠানো হবে।")
+        logger.info(f"মোট {len(seen_sms_ids)} টি পুরানো SMS ব্লক করা হয়েছে। এখন শুধুমাত্র নতুন আসা (LIVE) OTP সেন্ড হবে!")
 
+        # ২য় স্টেপ: লাইভ লুপ চালু
         while True:
             try:
                 await process_sms(session)
